@@ -153,6 +153,20 @@
                         id="pPrice"
                         name="pPrice"
                         placeholder="상품 가격을 입력하세요"
+                        min="1"
+                        max="999999"
+                        required
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="mainImg">대표 이미지</label>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        id="mainImg"
+                        name="mainImg"
+                        onchange="mainImageChange(this)"
                         required
                     />
                 </div>
@@ -162,42 +176,104 @@
         </div>
 
         <script>
+            const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+            const mainImage = [];
+
             document
                 .getElementById('addProductForm')
                 .addEventListener('submit', async (e) => {
                     e.preventDefault();
-
+                    console.log('mainImage', mainImage);
                     const pName = document.getElementById('pName').value;
                     const pDesc = document.getElementById('pDesc').value;
-                    const pPrice = document.getElementById('pPrice').value;
+                    const pPrice = document
+                        .getElementById('pPrice')
+                        .value.replace(/,/g, '');
+
                     try {
-                        const response = await fetch('/api/product/add', {
+                        const imageFormData = new FormData();
+                        imageFormData.append('image', mainImage[0]);
+                        const response = await fetch('/api/image/upload', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ pName, pDesc, pPrice }),
+                            body: imageFormData,
                         });
+                    } catch (error) {}
+                    // try {
+                    //     const response = await fetch('/api/product/add', {
+                    //         method: 'POST',
+                    //         headers: {
+                    //             'Content-Type': 'application/json',
+                    //         },
+                    //         body: JSON.stringify({ pName, pDesc, pPrice }),
+                    //     });
 
-                        const data = await response.json();
+                    //     const data = await response.json();
 
-                        if (response.ok) {
-                            alert('상품 등록이 완료되었습니다!');
-                        } else {
-                            alert(
-                                `오류: ${
-                                    data.message ||
-                                    '상품 등록 처리 중 문제가 발생했습니다.'
-                                }`,
-                            );
-                        }
-                    } catch (error) {
-                        alert(
-                            '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
-                        );
-                        console.error(error);
+                    //     if (response.ok) {
+                    //         alert('상품 등록이 완료되었습니다!');
+                    //     } else {
+                    //         alert(
+                    //             `오류: ${
+                    //                 data.message ||
+                    //                 '상품 등록 처리 중 문제가 발생했습니다.'
+                    //             }`,
+                    //         );
+                    //     }
+                    // } catch (error) {
+                    //     alert(
+                    //         '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+                    //     );
+                    //     console.error(error);
+                    // }
+                });
+
+            function checkFileSize(size) {
+                if (size > MAX_FILE_SIZE) {
+                    return false;
+                }
+                return true;
+            }
+            function mainImageChange(f) {
+                if (f.files[0] != null) {
+                    const fileSize = f.files[0].size;
+                    if (checkFileSize(fileSize)) {
+                        mainImage.length = 0;
+                        mainImage.push(f.files[0]);
+                    } else {
+                        alert('3MB 이하의 파일만 등록 가능합니다');
+                        f.value = '';
+                        return;
+                    }
+                }
+            }
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const priceInput = document.getElementById('pPrice');
+
+                priceInput.addEventListener('input', function (event) {
+                    let value = priceInput.value.replace(/,/g, ''); // 기존 입력값에서 콤마 제거
+
+                    // 숫자가 아니거나 0~999999 범위를 벗어나면 이전 값으로 복귀
+                    if (!/^\d*$/.test(value) || Number(value) > 999999) {
+                        // priceInput.value = priceInput.dataset.prevValue || '';
+                        priceInput.value =
+                            Number(
+                                priceInput.dataset.prevValue,
+                            ).toLocaleString() || '';
+                        return;
+                    }
+
+                    priceInput.dataset.prevValue = value; // 이전 값 저장
+                    priceInput.value = Number(value).toLocaleString(); // 콤마 적용
+                });
+
+                priceInput.addEventListener('blur', function () {
+                    if (!priceInput.value) {
+                        priceInput.value = '0';
                     }
                 });
+            });
         </script>
     </body>
 </html>
