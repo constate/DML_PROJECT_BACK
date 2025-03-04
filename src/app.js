@@ -6,6 +6,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const productRoutes = require('./routes/productRoutes');
+const imageRoutes = require('./routes/imageRoutes');
 
 const app = express();
 app.use(cors());
@@ -35,6 +36,7 @@ app.get('/addproduct', (req, res) => {
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', productRoutes);
+app.use('/api', imageRoutes);
 
 // 테스트용 엔드포인트
 app.get('/api/test', (req, res) => {

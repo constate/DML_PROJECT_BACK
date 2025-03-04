@@ -1,7 +1,6 @@
 const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
 
-// Firestore 데이터베이스 참조 가져오기
 const db = admin.firestore();
 const storage = admin.storage();
 
@@ -26,6 +25,32 @@ exports.addProduct = async (req, res) => {
         console.error('상품 추가 오류:', error);
         res.status(400).json({
             message: '상품 추가 실패',
+            error: error.message,
+        });
+    }
+};
+
+exports.deleteProduct = async (req, res) => {
+    try {
+        const { id } = req.params; // 삭제할 상품의 ID
+        const productRef = db.collection('DML_PRODUCT').doc(id);
+        const productDoc = await productRef.get();
+
+        if (!productDoc.exists) {
+            return res.status(404).json({
+                message: '상품을 찾을 수 없습니다.',
+            });
+        }
+
+        await productRef.delete();
+
+        res.status(200).json({
+            message: '상품 삭제 성공',
+        });
+    } catch (error) {
+        console.error('상품 삭제 오류:', error);
+        res.status(400).json({
+            message: '상품 삭제 실패',
             error: error.message,
         });
     }
