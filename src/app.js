@@ -19,7 +19,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// 웹 페이지 라우트 설정
+app.get('/', (req, res) => {
+    res.render('home'); // views/home.ejs 파일 렌더링
+});
+
 app.get('/signup', (req, res) => {
     res.render('signup'); // views/signup.ejs 파일 렌더링
 });
