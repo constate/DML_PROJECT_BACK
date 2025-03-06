@@ -6,13 +6,16 @@ const storage = admin.storage();
 
 exports.addProduct = async (req, res) => {
     try {
-        const { pName, pDesc, pPrice, mainImgPath, detailImgPath } = req.body;
+        const { pName, pDesc, pPrice, mainImgRef, mainImgPath, detailImgPath } =
+            req.body;
         const newDocRef = db.collection('DML_PRODUCT').doc();
+        const mainImgRefDoc = db.collection('images').doc(mainImgRef); // Firestore DocumentReference 생성
+
         const productData = {
             pName,
             pDesc,
             pPrice,
-            // mainImgPath,
+            mainImgRef: mainImgRefDoc,
             // detailImgPath,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
