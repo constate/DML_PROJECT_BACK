@@ -24,7 +24,7 @@ exports.uploadImage = async (req, res) => {
         const fileName = `${Date.now()}_${file.originalname}`;
 
         // 저장 경로 설정 (예: images 폴더 아래)
-        const filePath = `images/${fileName}`;
+        const filePath = `images/product/${fileName}`;
 
         // 임시 파일 경로 생성
         const tempFilePath = path.join(os.tmpdir(), fileName);
