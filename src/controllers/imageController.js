@@ -8,7 +8,7 @@ const db = admin.firestore();
 const storage = admin.storage();
 const bucket = storage.bucket();
 
-exports.uploadImage = async (req, res) => {
+exports.uploadProductImage = async (req, res) => {
     try {
         // 요청에 파일이 없는 경우 에러 반환
         if (!req.file) {
