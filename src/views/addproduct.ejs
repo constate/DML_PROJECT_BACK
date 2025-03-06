@@ -193,11 +193,60 @@
                     try {
                         const imageFormData = new FormData();
                         imageFormData.append('image', mainImage[0]);
-                        const response = await fetch('/api/image/upload', {
+                        imageFormData.append('storagePath', 'images/product');
+                        const imageResponse = await fetch('/api/image/upload', {
                             method: 'POST',
                             body: imageFormData,
                         });
-                    } catch (error) {}
+
+                        if (!imageResponse.ok) {
+                            throw new Error('이미지 업로드 실패');
+                        }
+
+                        const { fileUrl, filePath, imageId } =
+                            await imageResponse.json();
+
+                        if (!fileUrl) {
+                            throw new Error('이미지 URL을 불러올 수 없습니다');
+                        }
+                        if (!filePath) {
+                            throw new Error('이미지 경로를 찾을 수 없습니다');
+                        }
+
+                        const productResponse = await fetch(
+                            '/api/product/add',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    pName,
+                                    pDesc,
+                                    pPrice,
+                                    mainImgRef: imageId,
+                                }),
+                            },
+                        );
+
+                        const productData = await productResponse.json();
+
+                        if (productResponse.ok) {
+                            alert('상품 등록이 완료되었습니다!');
+                        } else {
+                            alert(
+                                `오류: ${
+                                    productData.message ||
+                                    '상품 등록 처리 중 문제가 발생했습니다.'
+                                }`,
+                            );
+                        }
+                    } catch (error) {
+                        alert(
+                            '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+                        );
+                        console.error(error);
+                    }
                     // try {
                     //     const response = await fetch('/api/product/add', {
                     //         method: 'POST',

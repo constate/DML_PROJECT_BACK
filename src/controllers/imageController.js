@@ -1,3 +1,4 @@
+const { v4: uuidv4 } = require('uuid');
 const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
 const path = require('path');
@@ -9,22 +10,21 @@ const storage = admin.storage();
 const bucket = storage.bucket();
 
 exports.uploadImage = async (req, res) => {
+    const { file, body } = req;
+    const { storagePath } = body;
     try {
         // 요청에 파일이 없는 경우 에러 반환
-        if (!req.file) {
+        if (!file) {
             return res.status(400).json({
                 message: '업로드할 이미지가 없습니다.',
             });
         }
 
-        // 파일 정보 가져오기
-        const file = req.file;
-
         // 파일 이름 생성 (중복 방지를 위해 타임스탬프 추가)
-        const fileName = `${Date.now()}_${file.originalname}`;
+        const fileName = `${Date.now()}_${uuidv4()}`;
 
         // 저장 경로 설정 (예: images 폴더 아래)
-        const filePath = `images/product/${fileName}`;
+        const filePath = `${storagePath}/${fileName}`;
 
         // 임시 파일 경로 생성
         const tempFilePath = path.join(os.tmpdir(), fileName);
@@ -47,7 +47,7 @@ exports.uploadImage = async (req, res) => {
         const fileUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
         // 옵션: Firestore에 파일 정보 저장하기
-        await db.collection('images').add({
+        const imageResponse = await db.collection('images').add({
             fileName: fileName,
             filePath: filePath,
             fileUrl: fileUrl,
@@ -55,11 +55,16 @@ exports.uploadImage = async (req, res) => {
             uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        if (!imageResponse.id) {
+            throw new Error('이미지 문서를 찾을 수 없습니다');
+        }
+
         // 성공 응답 반환
         res.status(200).json({
             message: '이미지 업로드 성공',
             fileUrl: fileUrl,
             filePath: filePath,
+            imageId: imageResponse.id,
         });
     } catch (error) {
         console.error('이미지 업로드 오류:', error);
