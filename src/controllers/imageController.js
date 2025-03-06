@@ -47,7 +47,7 @@ exports.uploadImage = async (req, res) => {
         const fileUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
         // 옵션: Firestore에 파일 정보 저장하기
-        await db.collection('images').add({
+        const imageResponse = await db.collection('images').add({
             fileName: fileName,
             filePath: filePath,
             fileUrl: fileUrl,
@@ -55,11 +55,16 @@ exports.uploadImage = async (req, res) => {
             uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        if (!imageResponse.id) {
+            throw new Error('이미지 문서를 찾을 수 없습니다');
+        }
+
         // 성공 응답 반환
         res.status(200).json({
             message: '이미지 업로드 성공',
             fileUrl: fileUrl,
             filePath: filePath,
+            imageId: imageResponse.id,
         });
     } catch (error) {
         console.error('이미지 업로드 오류:', error);
