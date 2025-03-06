@@ -193,11 +193,17 @@
                     try {
                         const imageFormData = new FormData();
                         imageFormData.append('image', mainImage[0]);
+                        imageFormData.append('storagePath', 'images/product');
                         const response = await fetch('/api/image/upload', {
                             method: 'POST',
                             body: imageFormData,
                         });
-                    } catch (error) {}
+                    } catch (error) {
+                        alert(
+                            '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+                        );
+                        console.error(error);
+                    }
                     // try {
                     //     const response = await fetch('/api/product/add', {
                     //         method: 'POST',
