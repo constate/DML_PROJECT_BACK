@@ -253,10 +253,13 @@
                         if (response.ok) {
                             // 로그인 성공 시 토큰 저장
                             if (data.token) {
-                                localStorage.setItem('token', data.token);
+                                localStorage.setItem(
+                                    'DML_ACCESS_TOKEN',
+                                    data.token,
+                                );
                             }
                             alert('로그인 성공!');
-                            window.location.href = '/'; // 메인 페이지로 이동
+                            // window.location.href = '/'; // 메인 페이지로 이동
                         } else {
                             alert(
                                 `로그인 실패: ${
