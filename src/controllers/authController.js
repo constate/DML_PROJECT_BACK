@@ -1,5 +1,6 @@
 const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
+const UAParser = require('ua-parser-js');
 
 // Firestore 데이터베이스 참조 가져오기
 const db = admin.firestore();
@@ -7,16 +8,26 @@ const storage = admin.storage();
 
 exports.signup = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, email, password, phoneNumber } = req.body;
 
         // 1. Firebase Authentication에 사용자 생성
         const userRecord = await admin.auth().createUser({ email, password });
 
+        // IP 주소 및 User-Agent 정보 가져오기
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const parser = new UAParser(req.headers['user-agent']);
+        const deviceInfo = parser.getResult();
+        const plainDeviceInfo = JSON.parse(JSON.stringify(deviceInfo));
+
         // 2. Firestore에 사용자 데이터 저장
         const userData = {
             uid: userRecord.uid,
+            role: 'SELLER',
             email: userRecord.email,
-            // displayName: userRecord.displayName,
+            username,
+            phoneNumber,
+            createdIpAddress: ip,
+            createdDeviceInfo: plainDeviceInfo,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             lastLogin: admin.firestore.FieldValue.serverTimestamp(),
         };
@@ -36,7 +47,7 @@ exports.signup = async (req, res) => {
             user: {
                 uid: userRecord.uid,
                 email: userRecord.email,
-                displayName: userRecord.displayName,
+                username: userRecord.username,
             },
             token,
         });
@@ -87,6 +98,21 @@ exports.login = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '1h' },
         );
+
+        // const accessToken = await admin
+        //     .auth()
+        //     .createCustomToken(userRecord.uid);
+
+        // Refresh Token은 일반적으로 Firebase에서 직접 제공하지 않으므로, DB 또는 자체 로직으로 관리 필요
+        const refreshToken = `dummy-refresh-token-${userRecord.uid}`; // 여기에 DB 연동 로직 추가 가능
+
+        // **Refresh Token을 HttpOnly Cookie에 저장**
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true, // JavaScript에서 접근 불가 → XSS 방지
+            secure: false, // HTTPS에서만 전송 (운영 환경에서는 true로 변경)
+            sameSite: 'Lax', // CSRF 방지
+            path: '/', // 쿠키가 모든 경로에서 전송되도록 설정
+        });
 
         res.json({
             message: '로그인 성공',
