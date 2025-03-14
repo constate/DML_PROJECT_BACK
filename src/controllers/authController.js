@@ -2,6 +2,8 @@ const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
 const UAParser = require('ua-parser-js');
 
+const { COLLECTION } = require('../constants/firebase');
+
 // Firestore 데이터베이스 참조 가져오기
 const db = admin.firestore();
 const storage = admin.storage();
@@ -33,7 +35,10 @@ exports.signup = async (req, res) => {
         };
 
         // DML_USERS 컬렉션에 사용자 문서 생성 (문서 ID를 uid로 설정)
-        await db.collection('DML_USERS').doc(userRecord.uid).set(userData);
+        await db
+            .collection(COLLECTION['USERS'])
+            .doc(userRecord.uid)
+            .set(userData);
 
         // JWT 토큰 생성
         const token = jwt.sign(
@@ -69,13 +74,13 @@ exports.login = async (req, res) => {
 
         // 2. Firestore에서 사용자 데이터 조회
         const userDoc = await db
-            .collection('DML_USERS')
+            .collection(COLLECTION['USERS'])
             .doc(userRecord.uid)
             .get();
 
         // 3. 사용자 데이터가 없으면 새로 생성
         if (!userDoc.exists) {
-            await db.collection('DML_USERS').doc(userRecord.uid).set({
+            await db.collection(COLLECTION['USERS']).doc(userRecord.uid).set({
                 uid: userRecord.uid,
                 email: userRecord.email,
                 displayName: userRecord.displayName,
@@ -84,9 +89,12 @@ exports.login = async (req, res) => {
             });
         } else {
             // 4. 마지막 로그인 시간 업데이트
-            await db.collection('DML_USERS').doc(userRecord.uid).update({
-                lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            });
+            await db
+                .collection(COLLECTION['USERS'])
+                .doc(userRecord.uid)
+                .update({
+                    lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+                });
         }
 
         // 사용자 데이터 가져오기
@@ -137,7 +145,7 @@ exports.getUserProfile = async (req, res) => {
         const { uid } = req.user; // 미들웨어에서 전달된 인증된 사용자 정보
 
         // Firestore에서 사용자 데이터 조회
-        const userDoc = await db.collection('DML_USERS').doc(uid).get();
+        const userDoc = await db.collection(COLLECTION['USERS']).doc(uid).get();
 
         if (!userDoc.exists) {
             return res
@@ -167,7 +175,7 @@ exports.logout = (req, res) => {
 // 모든 유저 가져오기
 exports.getAllUsers = async (req, res) => {
     try {
-        const snapshot = await db.collection('DML_USERS').get(); // users 컬렉션의 모든 문서 가져오기
+        const snapshot = await db.collection(COLLECTION['USERS']).get(); // users 컬렉션의 모든 문서 가져오기
         console.log(snapshot);
         snapshot.forEach((doc) => {
             console.log(`문서 ID: ${doc.id}, 데이터:`, doc.data());
