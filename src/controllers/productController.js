@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = admin.firestore();
 const storage = admin.storage();
 
+// 기존 상품 생성 API
 exports.addProduct = async (req, res) => {
     try {
         const { pName, pDesc, pPrice, mainImgRef, mainImgPath, detailImgPath } =
