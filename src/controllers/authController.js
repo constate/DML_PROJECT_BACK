@@ -1,8 +1,9 @@
 const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const UAParser = require('ua-parser-js');
 
-const { COLLECTION } = require('../constants/firebase');
+const { COLLECTION, ERROR_AUTH } = require('../constants/firebase');
 
 // Firestore 데이터베이스 참조 가져오기
 const db = admin.firestore();
@@ -72,50 +73,31 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Firebase Authentication에서 사용자 이메일로 조회
-        const userRecord = await admin.auth().getUserByEmail(email);
+        // 2. Firebase Authentication에 로그인 요청하여 ID 토큰 받기
+        const firebaseAuthResponse = await axios.post(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_WEB_API_KEY}`,
+            {
+                email,
+                password,
+                returnSecureToken: true,
+            },
+        );
+        console.log('Firebase 인증 응답:', firebaseAuthResponse.status);
+        console.log('firebaseAuthResponse.data', firebaseAuthResponse.data);
+        const { idToken, refreshToken, localId } = firebaseAuthResponse.data;
 
-        // 2. Firestore에서 사용자 데이터 조회
+        // 3. Firestore에서 사용자 데이터 조회
         const userDoc = await db
             .collection(COLLECTION['USERS'])
-            .doc(userRecord.uid)
+            .doc(localId)
             .get();
 
-        // 3. 사용자 데이터가 없으면 새로 생성
         if (!userDoc.exists) {
-            await db.collection(COLLECTION['USERS']).doc(userRecord.uid).set({
-                uid: userRecord.uid,
-                email: userRecord.email,
-                displayName: userRecord.displayName,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            });
-        } else {
-            // 4. 마지막 로그인 시간 업데이트
-            await db
-                .collection(COLLECTION['USERS'])
-                .doc(userRecord.uid)
-                .update({
-                    lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-                });
+            throw new Error();
         }
-
-        // 사용자 데이터 가져오기
-        const userData = userDoc.exists ? userDoc.data() : null;
-
-        // JWT 토큰 생성
-        const token = jwt.sign(
-            { uid: userRecord.uid },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' },
-        );
-
-        // const accessToken = await admin
-        //     .auth()
-        //     .createCustomToken(userRecord.uid);
-
-        // Refresh Token은 일반적으로 Firebase에서 직접 제공하지 않으므로, DB 또는 자체 로직으로 관리 필요
-        const refreshToken = `dummy-refresh-token-${userRecord.uid}`; // 여기에 DB 연동 로직 추가 가능
+        await db.collection(COLLECTION['USERS']).doc(localId).update({
+            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
         // **Refresh Token을 HttpOnly Cookie에 저장**
         res.cookie('refreshToken', refreshToken, {
@@ -129,17 +111,28 @@ exports.login = async (req, res) => {
         res.json({
             message: '로그인 성공',
             user: {
-                uid: userRecord.uid,
-                email: userRecord.email,
-                displayName: userRecord.displayName,
+                uid: userDoc.uid,
+                email: userDoc.email,
+                displayName: userDoc.displayName,
                 // Firestore에서 가져온 추가 데이터
-                ...userData,
+                ...userDoc.data(),
             },
-            token,
+            idToken,
         });
     } catch (error) {
-        console.error('로그인 오류:', error);
-        res.status(401).json({ message: '로그인 실패', error: error.message });
+        if (error.errorInfo && error.errorInfo.code) {
+            res.status(401).json({
+                message:
+                    ERROR_AUTH[error.errorInfo.code] ||
+                    '로그인에 실패하였습니다.',
+                error: error.message,
+            });
+        } else {
+            res.status(401).json({
+                message: '로그인 실패',
+                error: error.message,
+            });
+        }
     }
 };
 
