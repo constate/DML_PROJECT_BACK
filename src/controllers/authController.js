@@ -10,10 +10,13 @@ const storage = admin.storage();
 
 exports.signup = async (req, res) => {
     try {
-        const { username, email, password, phoneNumber } = req.body;
+        const { username, email, password, phone } = req.body;
 
         // 1. Firebase Authentication에 사용자 생성
-        const userRecord = await admin.auth().createUser({ email, password });
+        const userRecord = await admin
+            .auth()
+            .createUser({ email, password, displayName: username });
+        console.log(userRecord);
 
         // IP 주소 및 User-Agent 정보 가져오기
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -26,8 +29,8 @@ exports.signup = async (req, res) => {
             uid: userRecord.uid,
             role: 'SELLER',
             email: userRecord.email,
-            username,
-            phoneNumber,
+            displayName: username,
+            phone,
             createdIpAddress: ip,
             createdDeviceInfo: plainDeviceInfo,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -52,7 +55,7 @@ exports.signup = async (req, res) => {
             user: {
                 uid: userRecord.uid,
                 email: userRecord.email,
-                username: userRecord.username,
+                displayName: userRecord.displayName,
             },
             token,
         });
