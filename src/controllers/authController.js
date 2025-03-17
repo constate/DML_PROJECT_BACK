@@ -122,7 +122,8 @@ exports.login = async (req, res) => {
             httpOnly: true, // JavaScript에서 접근 불가 → XSS 방지
             secure: false, // HTTPS에서만 전송 (운영 환경에서는 true로 변경)
             sameSite: 'Lax', // CSRF 방지
-            path: '/', // 쿠키가 모든 경로에서 전송되도록 설정
+            path: '/', // 쿠키가 모든 경로에서 전송되도록 설정,
+            maxAge: 60 * 60 * 24 * 30 * 1000, // 30일
         });
 
         res.json({
