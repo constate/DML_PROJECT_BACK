@@ -73,7 +73,7 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 2. Firebase Authentication에 로그인 요청하여 ID 토큰 받기
+        // Firebase Authentication에 로그인 요청하여 ID 토큰 받기
         const firebaseAuthResponse = await axios.post(
             `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_WEB_API_KEY}`,
             {
@@ -86,7 +86,7 @@ exports.login = async (req, res) => {
         console.log('firebaseAuthResponse.data', firebaseAuthResponse.data);
         const { idToken, refreshToken, localId } = firebaseAuthResponse.data;
 
-        // 3. Firestore에서 사용자 데이터 조회
+        // Firestore에서 사용자 데이터 조회
         const userDoc = await db
             .collection(COLLECTION['USERS'])
             .doc(localId)
@@ -111,15 +111,18 @@ exports.login = async (req, res) => {
         res.json({
             message: '로그인 성공',
             user: {
-                uid: userDoc.uid,
-                email: userDoc.email,
-                displayName: userDoc.displayName,
-                // Firestore에서 가져온 추가 데이터
                 ...userDoc.data(),
             },
             idToken,
         });
     } catch (error) {
+        // if (error && error.response && error.response.data) {
+        //     console.log('error', error.response.data);
+        //     if (error.response.data.error) {
+        //         console.log(error.response.data.error.errors);
+        //     }
+        // }
+
         if (error.errorInfo && error.errorInfo.code) {
             res.status(401).json({
                 message:
@@ -129,7 +132,7 @@ exports.login = async (req, res) => {
             });
         } else {
             res.status(401).json({
-                message: '로그인 실패',
+                message: '이메일 및 비밀번호를 확인해주세요',
                 error: error.message,
             });
         }
