@@ -2,216 +2,57 @@ const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
+const { COLLECTION, ERROR_AUTH } = require('../constants/firebase');
+
 const db = admin.firestore();
 const storage = admin.storage();
 
-// 기존 상품 생성 API
-exports.addProduct = async (req, res) => {
+// 상품 생성
+exports.createProduct = async (req, res) => {
     try {
-        const { pName, pDesc, pPrice, mainImgRef, mainImgPath, detailImgPath } =
-            req.body;
-        const newDocRef = db.collection('DML_PRODUCT').doc();
-        const mainImgRefDoc = db.collection('images').doc(mainImgRef); // Firestore DocumentReference 생성
+        const { groupId, name, categoryIds } = req.body;
 
+        // 유효성 체크
+        if (
+            !groupId ||
+            !name ||
+            !Array.isArray(categoryIds) ||
+            categoryIds.length === 0
+        ) {
+            return res
+                .status(400)
+                .json({ message: 'Missing or invalid fields.' });
+        }
+
+        const productId = firestore.collection(COLLECTION['PRODUCTS']).doc().id;
         const productData = {
-            pName,
-            pDesc,
-            pPrice,
-            mainImgRef: mainImgRefDoc,
-            // detailImgPath,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            name,
+            groupId,
+            categoryIds,
+            createdAt: new Date(),
         };
-        await newDocRef.set(productData);
+
+        await firestore.runTransaction(async (tx) => {
+            const productRef = firestore
+                .collection(COLLECTION['PRODUCTS'])
+                .doc(productId);
+            const groupProductRef = firestore
+                .collection(COLLECTION['GROUPS'])
+                .doc(groupId)
+                .collection(COLLECTION['PRODUCTS'])
+                .doc(productId);
+
+            tx.set(productRef, productData);
+            tx.set(groupProductRef, productData);
+        });
 
         res.status(201).json({
-            message: '상품 추가 성공',
-        });
-    } catch (error) {
-        console.error('상품 추가 오류:', error);
-        res.status(400).json({
-            message: '상품 추가 실패',
-            error: error.message,
-        });
-    }
-};
-
-// 상품 생성
-exports.createProduct = async (req, res) => {
-    try {
-        const uid = req.user.uid;
-        const {
-            name,
-            basePrice,
-            description,
-            category,
-            tags,
-            thumbnail,
-            images,
-            status,
-            mainImgRef, // 이미지 문서 ID 추가
-            mainImgPath, // 이미지 경로 추가
-            detailImgPath, // 상세 이미지 경로 추가
-        } = req.body;
-
-        // 필수 입력값 확인
-        if (!name || !basePrice || !category) {
-            return res.status(400).json({
-                success: false,
-                message: '필수 입력값이 누락되었습니다.',
-            });
-        }
-
-        // 상품 ID 생성
-        const productId = uuidv4();
-        const currentTime = admin.firestore.FieldValue.serverTimestamp();
-
-        // 이미지 문서 참조 생성 (mainImgRef가 제공된 경우)
-        let mainImageReference = null;
-        if (mainImgRef) {
-            mainImageReference = db.collection('images').doc(mainImgRef);
-        }
-
-        // 상품 데이터 준비
-        const productData = {
+            message: 'Product created with transaction',
             productId,
-            name,
-            basePrice,
-            description: description || '',
-            category,
-            tags: tags || [],
-            thumbnail: thumbnail || '',
-            images: images || [],
-            status: status || 'active',
-            createdAt: currentTime,
-            updatedAt: currentTime,
-            createdBy: uid,
-        };
-
-        // 이미지 관련 필드 추가
-        if (mainImageReference) {
-            productData.mainImgRef = mainImageReference; // Firestore DocumentReference 추가
-        }
-
-        if (mainImgPath) {
-            productData.mainImgPath = mainImgPath;
-        }
-
-        if (detailImgPath) {
-            productData.detailImgPath = detailImgPath;
-        }
-
-        // 트랜잭션으로 상품 생성 및 사용자-상품 연결
-        await db.runTransaction(async (transaction) => {
-            // 상품 생성
-            const productRef = db.collection('PRODUCTS').doc(productId);
-            transaction.set(productRef, productData);
-
-            // 사용자-상품 연결
-            const userProductRef = db
-                .collection('USER_PRODUCTS')
-                .doc(productId);
-            transaction.set(userProductRef, {
-                userId: uid,
-                productId,
-                customPrice: basePrice,
-                customDescription: description || '',
-                inventory: 0,
-                soldCount: 0,
-                isVisible: true,
-                isPromoted: false,
-                lastEdited: currentTime,
-            });
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: '상품이 생성되었습니다.',
-            data: { productId },
         });
     } catch (error) {
-        console.error('상품 생성 오류:', error);
-        return res
-            .status(500)
-            .json({ success: false, message: '서버 오류가 발생했습니다.' });
-    }
-};
-
-// 상품 생성
-exports.createProduct = async (req, res) => {
-    try {
-        const uid = req.user.uid;
-        const {
-            name,
-            basePrice,
-            description,
-            category,
-            tags,
-            thumbnail,
-            images,
-            status,
-        } = req.body;
-
-        // 필수 입력값 확인
-        if (!name || !basePrice || !category) {
-            return res.status(400).json({
-                success: false,
-                message: '필수 입력값이 누락되었습니다.',
-            });
-        }
-
-        // 상품 ID 생성
-        const productId = uuidv4();
-        const currentTime = admin.firestore.FieldValue.serverTimestamp();
-
-        // 상품 데이터 준비
-        const productData = {
-            productId,
-            name,
-            basePrice,
-            description: description || '',
-            category,
-            tags: tags || [],
-            thumbnail: thumbnail || '',
-            images: images || [],
-            status: status || 'active',
-            createdAt: currentTime,
-            updatedAt: currentTime,
-            createdBy: uid,
-        };
-
-        // 트랜잭션으로 상품 생성 및 사용자-상품 연결
-        await db.runTransaction(async (transaction) => {
-            // 상품 생성
-            const productRef = db.collection('PRODUCTS').doc(productId);
-            transaction.set(productRef, productData);
-
-            // 사용자-상품 연결
-            const userProductRef = db
-                .collection('USER_PRODUCTS')
-                .doc(productId);
-            transaction.set(userProductRef, {
-                userId: uid,
-                productId,
-                customPrice: basePrice,
-                customDescription: description || '',
-                inventory: 0,
-                soldCount: 0,
-                isVisible: true,
-                isPromoted: false,
-                lastEdited: currentTime,
-            });
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: '상품이 생성되었습니다.',
-            data: { productId },
-        });
-    } catch (error) {
-        console.error('상품 생성 오류:', error);
-        return res
-            .status(500)
-            .json({ success: false, message: '서버 오류가 발생했습니다.' });
+        console.error('Transaction error while creating product:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };
 
