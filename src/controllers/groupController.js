@@ -24,7 +24,7 @@ exports.createGroup = async (req, res) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(), // 그룹 생성 시각
             name: name, // 그룹 이름
             type: 'NORMAL', // 그룹 종류
-            status: 'active', // 그룹의 상태
+            status: 'ACTIVE', // 그룹의 상태
             description: description, // 그룹 설명
             categories: [], // 그룹 상품 카테고리
             createdBy: owner, // 사용자 ID
