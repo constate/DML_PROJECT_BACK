@@ -8,7 +8,10 @@ exports.verifyToken = async (req, res, next) => {
         if (!token) {
             return res
                 .status(401)
-                .json({ success: false, message: '인증 토큰이 필요합니다.' });
+                .json({
+                    success: false,
+                    message: '인증 토큰이 필요합니다., verifyToken',
+                });
         }
 
         // Firebase에서 토큰 검증
@@ -38,12 +41,10 @@ exports.checkRole = (roles) => {
                 .get();
 
             if (!userDoc.exists) {
-                return res
-                    .status(404)
-                    .json({
-                        success: false,
-                        message: '사용자를 찾을 수 없습니다.',
-                    });
+                return res.status(404).json({
+                    success: false,
+                    message: '사용자를 찾을 수 없습니다.',
+                });
             }
 
             const userData = userDoc.data();
