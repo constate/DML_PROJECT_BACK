@@ -10,49 +10,95 @@ const storage = admin.storage();
 // 상품 생성
 exports.createProduct = async (req, res) => {
     try {
-        const { groupId, name, categoryIds } = req.body;
+        const { groupId } = req.params;
+        console.log('groupId', groupId);
+        const { name, description, price, status, createdBy } = req.body;
 
-        // 유효성 체크
-        if (
-            !groupId ||
-            !name ||
-            !Array.isArray(categoryIds) ||
-            categoryIds.length === 0
-        ) {
-            return res
-                .status(400)
-                .json({ message: 'Missing or invalid fields.' });
+        // 필수 입력값 검증
+        if (!name || !price) {
+            return res.status(400).json({
+                success: false,
+                message: '필수 입력값이 누락되었습니다.',
+                error: 'Missing required fields',
+            });
         }
 
-        const productId = firestore.collection(COLLECTION['PRODUCTS']).doc().id;
+        // 그룹이 존재하는지 확인
+        const groupRef = admin
+            .firestore()
+            .collection(COLLECTION.GROUPS)
+            .doc(groupId);
+        const groupDoc = await groupRef.get();
+
+        if (!groupDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                message: '존재하지 않는 그룹입니다.',
+                error: 'Group not found',
+            });
+        }
+
+        // 사용자가 그룹의 멤버인지 확인
+        const groupData = groupDoc.data();
+        if (!groupData.members.includes(createdBy)) {
+            return res.status(403).json({
+                success: false,
+                message: '그룹에 속한 멤버만 제품을 추가할 수 있습니다.',
+                error: 'User not a member of the group',
+            });
+        }
+
+        // 제품 데이터 구성
         const productData = {
             name,
-            groupId,
-            categoryIds,
-            createdAt: new Date(),
+            description: description || '',
+            price,
+            imageUrl: '',
+            type: 'DEFAULT',
+            status: status || 'ACTIVE',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdBy,
         };
 
-        await firestore.runTransaction(async (tx) => {
-            const productRef = firestore
-                .collection(COLLECTION['PRODUCTS'])
-                .doc(productId);
-            const groupProductRef = firestore
-                .collection(COLLECTION['GROUPS'])
-                .doc(groupId)
-                .collection(COLLECTION['PRODUCTS'])
-                .doc(productId);
+        // 제품 추가 및 그룹 데이터 업데이트를 트랜잭션으로 처리
+        const db = admin.firestore();
 
-            tx.set(productRef, productData);
-            tx.set(groupProductRef, productData);
+        const result = await db.runTransaction(async (transaction) => {
+            // 1. products 하위 컬렉션에 제품 추가
+            const productRef = groupRef.collection('products').doc();
+            transaction.set(productRef, productData);
+
+            // 2. 그룹 문서의 products 배열에 제품 ID 추가 (선택적)
+            // 이는 제품 ID의 빠른 참조를 위한 것이며, 필요에 따라 생략 가능
+            const productIds = groupData.products || [];
+            productIds.push(productRef.id);
+
+            transaction.update(groupRef, {
+                products: productIds,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            // 제품 ID와 데이터 반환
+            return {
+                id: productRef.id,
+                ...productData,
+            };
         });
 
+        // 생성된 제품 정보 반환
         res.status(201).json({
-            message: 'Product created with transaction',
-            productId,
+            success: true,
+            message: '제품이 성공적으로 추가되었습니다.',
+            data: result,
         });
     } catch (error) {
-        console.error('Transaction error while creating product:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('제품 추가 중 오류 발생:', error);
+        res.status(500).json({
+            success: false,
+            message: '제품 추가 중 오류가 발생했습니다.',
+            error: error.message,
+        });
     }
 };
 
