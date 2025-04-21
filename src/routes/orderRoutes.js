@@ -4,25 +4,17 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// 모든 라우트에 토큰 인증 적용
-router.use(authMiddleware.verifyToken);
+// 인증이 필요한 라우트를 등록하는 도우미 함수
+const secureRoute = (method, path, handler) => {
+    return router[method](path, authMiddleware.verifyToken, handler);
+};
 
-// 주문 생성
-router.post('/', orderController.createOrder);
-
-// 주문 목록 조회
-router.get('/', orderController.listOrders);
-
-// 주문 상세 조회
-router.get('/:orderId', orderController.getOrder);
-
-// 주문 상태 업데이트
-router.patch('/:orderId/status', orderController.updateOrderStatus);
-
-// 주문 취소
-router.post('/:orderId/cancel', orderController.cancelOrder);
-
-// 결제 상태 업데이트
-router.patch('/:orderId/payment', orderController.updatePaymentStatus);
+// 인증이 필요한 모든 라우트에 도우미 함수 사용
+secureRoute('post', '/', orderController.createOrder);
+secureRoute('get', '/', orderController.listOrders);
+secureRoute('get', '/:orderId', orderController.getOrder);
+secureRoute('patch', '/:orderId/status', orderController.updateOrderStatus);
+secureRoute('post', '/:orderId/cancel', orderController.cancelOrder);
+secureRoute('patch', '/:orderId/payment', orderController.updatePaymentStatus);
 
 module.exports = router;
