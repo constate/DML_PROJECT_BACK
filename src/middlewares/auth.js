@@ -7,7 +7,9 @@ const authenticateToken = async (req, res, next) => {
         const token = authHeader && authHeader.split(' ')[1];
 
         if (!token) {
-            return res.status(401).json({ message: '인증 토큰이 필요합니다' });
+            return res
+                .status(401)
+                .json({ message: '인증 토큰이 필요합니다, authenticateToken' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
