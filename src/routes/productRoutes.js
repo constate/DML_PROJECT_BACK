@@ -5,17 +5,14 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// 기존 상품 생성
-router.post('/product/add', addProduct);
-
 // 모든 라우트에 토큰 인증 적용
 router.use(authMiddleware.verifyToken);
 
 // 상품 생성
-router.post('/product', productController.createProduct);
+router.post('/:groupId/product', productController.createProduct);
 
 // 상품 목록 조회
-router.get('/product', productController.listProducts);
+router.get('/:groupId/product', productController.listProducts);
 
 // 상품 상세 조회
 router.get('/product/:productId', productController.getProduct);
